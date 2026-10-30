@@ -6,8 +6,8 @@ import pandas as pd
 TARIFF_FACTORS = {
     'vehicle_type': {'Compact': 1.00, 'Mid-range': 1.15, 'SUV': 1.35, 'Sports car': 1.45, 'Luxury': 1.60},
     'coverage_type': {'Comprehensive': 1.00, 'Partial coverage': 0.85, 'Liability': 0.75},
-    'region': {'PLZ_01': 1.00, 'PLZ_02': 0.92, 'PLZ_03': 0.88, 'PLZ_04': 0.84, 'PLZ_05': 0.80,
-               'PLZ_06': 0.80, 'PLZ_07': 0.76, 'PLZ_08': 0.72, 'PLZ_09': 0.72, 'PLZ_10': 0.68},
+    'region': {'R01': 1.00, 'R02': 0.92, 'R03': 0.88, 'R04': 0.84, 'R05': 0.80,
+               'R06': 0.80, 'R07': 0.76, 'R08': 0.72, 'R09': 0.72, 'R10': 0.68},
 }
 
 
@@ -25,8 +25,8 @@ def generate_vehicle_fraud_data(n=10000, seed=42):
     correlated and their raw group means mix both effects.
 
     The result looks like a raw export: a `claim_id`, 50 duplicate rows, the
-    placeholder 0 for 30 unknown ages and missing `schufa_score` values. A
-    missing `schufa_score` is about four times as likely for fraudulent claims.
+    placeholder 0 for 30 unknown ages and missing `credit_score` values. A
+    missing `credit_score` is about four times as likely for fraudulent claims.
     """
     rng = np.random.default_rng(seed)
 
@@ -35,7 +35,7 @@ def generate_vehicle_fraud_data(n=10000, seed=42):
 
     # Stage 2: features correlated with the propensity
     policyholder_age = np.clip(50 - 5 * propensity + rng.normal(0, 8, n), 18, 80).astype(int)
-    schufa_score = np.clip(600 - 60 * propensity + rng.normal(0, 40, n), 300, 850).astype(int)
+    credit_score = np.clip(600 - 60 * propensity + rng.normal(0, 40, n), 300, 850).astype(int)
     customer_since_years = np.clip(15 - 4 * propensity + rng.normal(0, 3, n), 0, 30).astype(int)
     number_of_prior_claims = np.clip(2 + propensity + rng.normal(0, 1.2, n), 0, 5).astype(int)
     reporting_delay_days = np.clip(25 + 10 * propensity + rng.normal(0, 5, n), 0, 60).astype(int)
@@ -44,7 +44,7 @@ def generate_vehicle_fraud_data(n=10000, seed=42):
 
     # Features without fraud signal
     occupation = rng.choice(['Employed', 'Self-employed', 'Unemployed', 'Student'], n)
-    region = rng.choice([f'PLZ_{i:02d}' for i in range(1, 11)], n)
+    region = rng.choice([f'R{i:02d}' for i in range(1, 11)], n)
     vehicle_value = rng.uniform(1000, 80000, n)
     vehicle_type = rng.choice(['Compact', 'Mid-range', 'Luxury', 'SUV', 'Sports car'], n)
     coverage_type = rng.choice(['Liability', 'Partial coverage', 'Comprehensive'], n)
@@ -65,7 +65,7 @@ def generate_vehicle_fraud_data(n=10000, seed=42):
     log_odds = (
         -8.5
         + 4.0 * claim_amount / vehicle_value
-        + 2.5 * (850 - schufa_score) / 550
+        + 2.5 * (850 - credit_score) / 550
         + 1.5 * reporting_delay_days / 60
         + np.where(no_report & no_witness, 1.5, np.where(no_report | no_witness, 0.3, 0.0))
         + 0.5 * (customer_since_years < 3)
@@ -85,7 +85,7 @@ def generate_vehicle_fraud_data(n=10000, seed=42):
         'policyholder_age': policyholder_age,
         'occupation': occupation,
         'region': region,
-        'schufa_score': schufa_score,
+        'credit_score': credit_score,
         'customer_since_years': customer_since_years,
         'vehicle_value': vehicle_value.round(2),
         'vehicle_type': vehicle_type,
@@ -102,8 +102,8 @@ def generate_vehicle_fraud_data(n=10000, seed=42):
     df.loc[rng.choice(n, 30, replace=False), 'policyholder_age'] = 0
 
     # Raw export: missing credit scores, more frequent for fraudulent claims
-    schufa_missing = rng.uniform(0, 1, n) < np.where(fraud == 1, 0.15, 0.04)
-    df['schufa_score'] = df['schufa_score'].astype('Int64').mask(schufa_missing)
+    credit_score_missing = rng.uniform(0, 1, n) < np.where(fraud == 1, 0.15, 0.04)
+    df['credit_score'] = df['credit_score'].astype('Int64').mask(credit_score_missing)
 
     # Raw export: duplicate rows from a double export, in random order
     duplicates = df.loc[rng.choice(n, 50, replace=False)]
