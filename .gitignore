@@ -3,3 +3,7 @@ __pycache__/
 .ipynb_checkpoints/
 .DS_Store
 _references/
+claims.csv
+average_claim.png
+ratio_by_region.csv
+fraud_by_prior_claims.png
